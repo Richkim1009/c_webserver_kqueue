@@ -8,11 +8,22 @@
 #include <sys/event.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdarg.h>
+#include "str.h"
 
 static const int back_log = 32;
 static const bool server_stopped = false;
 static const int port = 8080;
 static const int max_changes = 8;
+static const int recv_buf_capacity = 2048;
+
+void log_debug(const char *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    vprintf(format, ap);
+    va_end(ap);
+}
 
 int main() {
     int server_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -65,7 +76,6 @@ int main() {
 
     while (!server_stopped) {
         new_events = kevent(kqfd, NULL, 0, event_list, 8, 0);
-        printf("%d\n", new_events);
         if (new_events == -1) {
             perror("kqueue()");
             exit(EXIT_FAILURE);
@@ -85,40 +95,22 @@ int main() {
                 kevent(kqfd, change_list, 1, NULL, 0, NULL);
             } else {
                 if (curr_event.flags & EVFILT_READ) {
-                    char *recv_buf = malloc(1024);
-                    int bytes_read = recv(curr_event.ident, recv_buf, 1023, 0);
+                    char *recv_buf = malloc(recv_buf_capacity);
+                    int bytes_read = recv(curr_event.ident, recv_buf, recv_buf_capacity - 1, 0);
                     recv_buf[bytes_read] = '\0';
-                    printf("%s\n", recv_buf);
                     if (strncmp(recv_buf, "GET", 3) == 0) {
                         const char * http_response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nHello, World!";
                         send(curr_event.ident, http_response, strlen(http_response), 0);
                         curr_event.flags |= EV_EOF;
-                        printf("%s\n", http_response);
                     }
                     free(recv_buf);
                 }
 
                 if (curr_event.flags & EV_EOF) {
                     EV_SET(change_list, curr_event.ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-//                    int err = kevent(kqfd, change_list, 1, NULL, 0, 0);
-
-//                    if (err < 0)
-//                    {
-//                        printf("Error\n");
-////                        continue;
-//                    }
-
                     close(curr_event.ident);
                 }
             }
-
-//            char *str = malloc(1024);
-//            ssize_t length = recv(client_fd, str, 1024, 0);
-//            if (strncmp(str, "GET", 3) == 0) {
-//
-//                send(client_fd, http_response, strlen(http_response), 0);
-//
-//            }
         }
     }
 
