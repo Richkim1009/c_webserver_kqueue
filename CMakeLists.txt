@@ -3,4 +3,4 @@ project(c_webserver_kqueue C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(c_webserver_kqueue main.c str.c str.h)
+add_executable(c_webserver_kqueue main.c str.c str.h http.h)

@@ -98,9 +98,56 @@ int main() {
                     char *recv_buf = malloc(recv_buf_capacity);
                     int bytes_read = recv(curr_event.ident, recv_buf, recv_buf_capacity - 1, 0);
                     recv_buf[bytes_read] = '\0';
-                    if (strncmp(recv_buf, "GET", 3) == 0) {
-                        const char * http_response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nHello, World!";
-                        send(curr_event.ident, http_response, strlen(http_response), 0);
+                    char **token = parse_http_header(recv_buf, "\n", " ");
+                    if (strncmp(token[0], "GET", 3) == 0) {
+                        char *basic_path = "../contents";
+                        char *index = "index.html";
+                        char *file_path = malloc(strlen(basic_path) + strlen(token[1]) + strlen(index) + 1);
+                        strcpy(file_path, basic_path);
+                        strcat(file_path, token[1]);
+                        strcat(file_path, index);
+                        file_path[strlen(file_path)] = '\0';
+                        printf("%s\n", file_path);
+                        FILE *fp = fopen(file_path, "r");
+                        if (fp == NULL) {
+                            perror("fopen()");
+                            exit(EXIT_FAILURE);
+                        }
+                        if (fseek(fp, 0, SEEK_END) == -1) {
+                            perror("fseek()");
+                            exit(EXIT_FAILURE);
+                        }
+                        long file_size = ftell(fp);
+
+                        if (file_size == -1) {
+                            perror("ftell()");
+                            fclose(fp);
+                            exit(EXIT_FAILURE);
+                        }
+
+                        if (fseek(fp, 0, SEEK_SET)) {
+                            perror("fseek()");
+                            fclose(fp);
+                            exit(EXIT_FAILURE);
+                        }
+
+                        char *file_content = malloc(file_size);
+
+                        size_t n = fread(file_content, 1, file_size, fp);
+
+                        if (n != file_size) {
+                            log_debug("Error while reading the file: n != file_size\n");
+                            fclose(fp);
+                            exit(EXIT_FAILURE);
+                        }
+
+                        fclose(fp);
+
+                        char *http_response_first = "HTTP/1.1 200 OK\r\nContent-type: text/html\r\n\r\n";
+
+//                        const char * http_response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nHello, World!";
+                        send(curr_event.ident, http_response_first, strlen(http_response_first), 0);
+                        send(curr_event.ident, file_content, strlen(file_content), 0);
                         curr_event.flags |= EV_EOF;
                     }
                     free(recv_buf);
