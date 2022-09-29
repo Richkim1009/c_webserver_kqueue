@@ -22,4 +22,16 @@ enum HttpVersion {
     HTTP_VERSION_1_1,
 };
 
+struct MethodTableEntry {
+    char *request_line_prefix;
+    enum HttpMethod method;
+};
+
+struct HttpRequest {
+    enum HttpMethod method;
+    char *target;
+    enum HttpVersion version;
+    char *message_body;
+};
+
 #endif //C_WEBSERVER_KQUEUE_HTTP_H

@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include "str.h"
+#include "sock.h"
+#include "http.h"
 
 static const int back_log = 32;
 static const bool server_stopped = false;
@@ -98,16 +100,31 @@ int main() {
                     char *recv_buf = malloc(recv_buf_capacity);
                     int bytes_read = recv(curr_event.ident, recv_buf, recv_buf_capacity - 1, 0);
                     recv_buf[bytes_read] = '\0';
+                    struct HttpRequest client;
                     char **token = parse_http_header(recv_buf, "\n", " ");
-                    if (strncmp(token[0], "GET", 3) == 0) {
-                        char *basic_path = "../contents";
-                        char *index = "index.html";
-                        char *file_path = malloc(strlen(basic_path) + strlen(token[1]) + strlen(index) + 1);
-                        strcpy(file_path, basic_path);
-                        strcat(file_path, token[1]);
-                        strcat(file_path, index);
-                        file_path[strlen(file_path)] = '\0';
-                        printf("%s\n", file_path);
+                    struct MethodTableEntry method_table[] = {
+                            { "GET", HTTP_METHOD_GET },
+                            { "HEAD", HTTP_METHOD_HEAD },
+                            { "POST", HTTP_METHOD_POST },
+                            { "PUT", HTTP_METHOD_PUT },
+                            { "DELETE", HTTP_METHOD_DELETE },
+                            { "TRACE", HTTP_METHOD_TRACE },
+                            { "OPTIONS", HTTP_METHOD_OPTIONS },
+                            { "CONNECT", HTTP_METHOD_CONNECT },
+                            { "PATCH", HTTP_METHOD_PATCH }
+                    };
+
+                    int found_http_method = -1;
+
+                    for (int i = 0; i < 9; ++i) {
+                        if (strncmp(token[0], method_table[i].request_line_prefix, strlen(token[0])) == 0) {
+                            found_http_method = i;
+                            break;
+                        }
+                    }
+
+                    if (found_http_method == 0) {
+                        const char *file_path = server_file_path(token[1]);
                         FILE *fp = fopen(file_path, "r");
                         if (fp == NULL) {
                             perror("fopen()");
@@ -145,9 +162,12 @@ int main() {
 
                         char *http_response_first = "HTTP/1.1 200 OK\r\nContent-type: text/html\r\n\r\n";
 
-//                        const char * http_response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nHello, World!";
                         send(curr_event.ident, http_response_first, strlen(http_response_first), 0);
-                        send(curr_event.ident, file_content, strlen(file_content), 0);
+                        bool result = send_all(curr_event.ident, file_content, n, 0);
+                        if (!result) {
+                            perror("send()");
+                            exit(EXIT_FAILURE);
+                        }
                         curr_event.flags |= EV_EOF;
                     }
                     free(recv_buf);
@@ -160,7 +180,6 @@ int main() {
             }
         }
     }
-
 
     return EXIT_SUCCESS;
 }

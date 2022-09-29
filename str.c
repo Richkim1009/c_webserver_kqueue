@@ -28,7 +28,7 @@ void remove_crlf(char *str)
     }
 }
 
-extern char **parse_http_header(char *str, const char *first, const char *second)
+char **parse_http_header(char *str, const char *first, const char *second)
 {
     char *header = strtok(str, first);
     unsigned int count = 0;
@@ -39,4 +39,17 @@ extern char **parse_http_header(char *str, const char *first, const char *second
         tmp = strtok(NULL, second);
     }
     return token;
+}
+
+char *server_file_path(char *path)
+{
+    const char *basic_path = "../contents";
+    char *file_path;
+    char *index = strlen(path) == 1 ? "/index.html" : path;
+    file_path = malloc(strlen(basic_path) + strlen(index) + 1);
+    strcpy(file_path, basic_path);
+    strcat(file_path, index);
+    file_path[strlen(file_path)] = '\0';
+
+    return file_path;
 }
