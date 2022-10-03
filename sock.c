@@ -1,7 +1,3 @@
-//
-// Created by 김부익 on 2022/09/29.
-//
-
 #include "sock.h"
 #include <sys/socket.h>
 #include <stdio.h>

@@ -1,7 +1,3 @@
-//
-// Created by 김부익 on 2022/09/29.
-//
-
 #ifndef C_WEBSERVER_KQUEUE_SOCK_H
 #define C_WEBSERVER_KQUEUE_SOCK_H
 #include <string.h>

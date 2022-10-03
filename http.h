@@ -1,7 +1,3 @@
-//
-// Created by 김부익 on 2022/09/28.
-//
-
 #ifndef C_WEBSERVER_KQUEUE_HTTP_H
 #define C_WEBSERVER_KQUEUE_HTTP_H
 enum HttpMethod {
